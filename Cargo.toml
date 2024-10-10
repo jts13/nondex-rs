@@ -1,5 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "nondex"
+    "nondex",
+    "tests",
+]
+exclude = [
+    # Running `cargo` from within the `.nondex` directory will cause issues with nested workspaces, so we exclude it
+    # (and the crates we clone into it) from this workspace.
+    ".nondex"
 ]
