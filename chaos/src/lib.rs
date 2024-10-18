@@ -1,3 +1,5 @@
+pub(crate) const SEED: u64 = 42;
+
 // https://xorshift.di.unimi.it/splitmix64.c
 //
 // /*  Written in 2015 by Sebastiano Vigna (vigna@acm.org)
@@ -57,6 +59,70 @@ pub(crate) mod splitmix64 {
                 let idx = self.next() as usize % (i + 1);
                 buf.swap(i, idx);
             }
+        }
+    }
+}
+
+pub(crate) mod sync {
+    use core::{
+        cell::UnsafeCell,
+        hint,
+        ops::{Deref, DerefMut},
+        sync::atomic::{AtomicBool, Ordering},
+    };
+
+    // Borrowed from <https://marabos.nl/atomics/building-spinlock.html>
+    pub(crate) struct SpinLock<T> {
+        locked: AtomicBool,
+        value: UnsafeCell<T>,
+    }
+
+    unsafe impl<T> Sync for SpinLock<T> where T: Send {}
+
+    impl<T> SpinLock<T> {
+        pub(crate) const fn new(value: T) -> Self {
+            Self {
+                locked: AtomicBool::new(false),
+                value: UnsafeCell::new(value),
+            }
+        }
+
+        pub(crate) fn lock(&self) -> SpinLockGuard<T> {
+            while self.locked.swap(true, Ordering::Acquire) {
+                hint::spin_loop();
+            }
+
+            SpinLockGuard { lock: self }
+        }
+
+        fn unlock(&self) {
+            self.locked.store(false, Ordering::Release);
+        }
+    }
+
+    pub(crate) struct SpinLockGuard<'a, T: 'a> {
+        lock: &'a SpinLock<T>,
+    }
+
+    unsafe impl<T> Send for SpinLockGuard<'_, T> where T: Send {}
+    unsafe impl<T> Sync for SpinLockGuard<'_, T> where T: Sync {}
+
+    impl<T> Drop for SpinLockGuard<'_, T> {
+        fn drop(&mut self) {
+            self.lock.unlock();
+        }
+    }
+
+    impl<T> Deref for SpinLockGuard<'_, T> {
+        type Target = T;
+        fn deref(&self) -> &T {
+            unsafe { &*self.lock.value.get() }
+        }
+    }
+
+    impl<T> DerefMut for SpinLockGuard<'_, T> {
+        fn deref_mut(&mut self) -> &mut T {
+            unsafe { &mut *self.lock.value.get() }
         }
     }
 }

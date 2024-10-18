@@ -52,3 +52,7 @@ Here's a workaround for experimenting with changes to std
 `__CARGO_TESTS_ONLY_SRC_ROOT`](https://github.com/rust-lang/cargo/blob/643a025b3c3ad6f7d3acea558d223784ea8ab932/src/cargo/core/compiler/standard_lib.rs#L184-L186)
 is an undocumented environment variable that can be used to redirect Cargo to a specified location for the 'sysroot'
 used to build the crate(s).
+
+## Thoughts on how to upgrade this with newer versions of Rust
+
+* proc-macro for wrapping iterators?

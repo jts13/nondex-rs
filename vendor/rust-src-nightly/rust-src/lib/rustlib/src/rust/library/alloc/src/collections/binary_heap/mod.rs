@@ -149,7 +149,6 @@ use core::mem::{self, ManuallyDrop, swap};
 use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
-
 use crate::alloc::Global;
 use crate::collections::TryReserveError;
 use crate::slice;
@@ -961,7 +960,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "binaryheap_iter")]
     pub fn iter(&self) -> Iter<'_, T> {
-        Iter { iter: self.data.iter() }
+        Iter::new(&self.data)
     }
 
     /// Returns an iterator which retrieves elements in heap order.
@@ -1431,7 +1430,22 @@ impl<T> Drop for Hole<'_, T> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
-    iter: slice::Iter<'a, T>,
+    items: crate::boxed::Box<[&'a T]>,
+    idx: usize,
+}
+
+impl<'a, T: 'a> Iter <'a, T>  {
+    #[inline]
+    fn new(items: &'a [T]) -> Self {
+        let items = items.iter().collect();
+        let mut iter = Iter { items, idx: 0 };
+
+        use crate::chaos::{SEED, sync::SpinLock, splitmix64::SplitMix64};
+        static RNG: SpinLock<SplitMix64> = SpinLock::new(SplitMix64::new(SEED));
+        RNG.lock().shuffle(&mut iter.items);
+
+        iter
+    }
 }
 
 #[stable(feature = "default_iters_sequel", since = "1.82.0")]
@@ -1444,14 +1458,14 @@ impl<T> Default for Iter<'_, T> {
     /// assert_eq!(iter.len(), 0);
     /// ```
     fn default() -> Self {
-        Iter { iter: Default::default() }
+        Iter { items: Default::default(), idx: Default::default() }
     }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Iter").field(&self.iter.as_slice()).finish()
+        f.debug_tuple("Iter")/*.field(&self.iter.as_slice())*/.finish()
     }
 }
 
@@ -1459,7 +1473,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
     fn clone(&self) -> Self {
-        Iter { iter: self.iter.clone() }
+        Iter { items: self.items.clone(), idx: self.idx }
     }
 }
 
@@ -1469,32 +1483,41 @@ impl<'a, T> Iterator for Iter<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
-        self.iter.next()
+        if self.idx >= self.items.len() {
+            None
+        } else {
+            let idx = self.idx;
+            self.idx += 1;
+            Some(&self.items[idx])
+        }
     }
 
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+    // TODO(toms): implement
+    // #[inline]
+    // fn size_hint(&self) -> (usize, Option<usize>) {
+    //     self.iter.size_hint()
+    // }
 
-    #[inline]
-    fn last(self) -> Option<&'a T> {
-        self.iter.last()
-    }
+    // TODO(toms): implement
+    // #[inline]
+    // fn last(self) -> Option<&'a T> {
+    //     self.iter.last()
+    // }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a T> {
-        self.iter.next_back()
-    }
-}
+// TODO(toms): implement
+// #[stable(feature = "rust1", since = "1.0.0")]
+// impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
+//     #[inline]
+//     fn next_back(&mut self) -> Option<&'a T> {
+//         self.iter.next_back()
+//     }
+// }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
     fn is_empty(&self) -> bool {
-        self.iter.is_empty()
+        self.items.is_empty()
     }
 }
 

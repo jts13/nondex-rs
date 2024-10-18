@@ -56,8 +56,8 @@ function x-test() {
   export RUSTFLAGS=""
   export __CARGO_TESTS_ONLY_SRC_ROOT="$PWD/vendor/rust-src-nightly/rust-src/lib/rustlib/src/rust/library"
 
-  if [[ -n "${REPO}" ]]; then
-    local REPO_NAME="${REPO##*/}"
+  if [[ -n "${REPO}" && -n "${CRATE}" ]]; then
+    local REPO_NAME="${CRATE}"
 
     # TODO(toms): detect --target based on host platform (currently hard-coded to macOS)
     # TODO(toms): avoid `|| true` (and hopefully also `rm -rf`)
@@ -66,11 +66,11 @@ function x-test() {
       && git clone "${REPO}" "${REPO_NAME}" || true \
       && cd "${REPO_NAME}" \
       && cargo clean \
-      && cargo test --release --target=aarch64-apple-darwin -Zbuild-std -- -Zunstable-options --format=json
+      && cargo test --all-features --release --target=aarch64-apple-darwin -Zbuild-std -- -Zunstable-options --format=json
     )
   elif [[ -n "${CRATE}" ]]; then
     cargo clean # TODO(toms): avoid doing this every time?
-    cargo test --release -p "${CRATE}" --target=aarch64-apple-darwin -Zbuild-std -- -Zunstable-options --format=json
+    cargo test --all-features --release -p "${CRATE}" --target=aarch64-apple-darwin -Zbuild-std -- -Zunstable-options --format=json
   else
     echo "Must specify either --repo or --crate"
     exit 1

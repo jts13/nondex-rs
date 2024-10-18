@@ -275,3 +275,8 @@ pub(crate) mod test_helpers {
         rand::SeedableRng::from_seed(seed)
     }
 }
+
+// TODO(toms): add doc-comment to explain the approach here (i.e. hard to add new crate to processed std)
+pub(crate) mod chaos {
+    include!("../../../../../../../../../../chaos/src/lib.rs");
+}

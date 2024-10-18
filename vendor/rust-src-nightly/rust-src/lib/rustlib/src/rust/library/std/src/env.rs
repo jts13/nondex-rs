@@ -172,7 +172,7 @@ pub fn vars_os() -> VarsOs {
     // TODO(toms): find a good way to mark my edits
 
     use crate::sync::Mutex;
-    use crate::chaos::splitmix64::SplitMix64;
+    use crate::chaos::{SEED, splitmix64::SplitMix64};
 
     let vars = VarsOsInner { inner: os_imp::env() };
     let mut vars = vars.collect::<Vec<_>>();
@@ -185,7 +185,7 @@ pub fn vars_os() -> VarsOs {
     //     vars.reverse(); // TODO(toms): better shuffle - use a seed
     // }
 
-    static RNG: Mutex<SplitMix64> = Mutex::new(SplitMix64::new(0));
+    static RNG: Mutex<SplitMix64> = Mutex::new(SplitMix64::new(SEED));
     RNG.lock().unwrap().shuffle(&mut vars);
 
     VarsOs { inner: vars.into_iter() }

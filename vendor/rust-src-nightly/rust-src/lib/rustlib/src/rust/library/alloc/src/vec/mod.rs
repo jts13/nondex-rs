@@ -394,9 +394,10 @@ mod spec_extend;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Vec")]
 #[rustc_insignificant_dtor]
+#[repr(C)] // TODO(toms): mark
 pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
-    buf: RawVec<T, A>,
     len: usize,
+    buf: RawVec<T, A>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3702,7 +3703,9 @@ impl<T> Default for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for Vec<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&**self, f)
+        // TODO(toms): mark
+        // fmt::Debug::fmt(&**self, f)
+        Ok(())
     }
 }
 

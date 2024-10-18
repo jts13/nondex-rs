@@ -24,5 +24,5 @@ To run `nondex-rs` on a local crate:
 To run `nondex-rs` on a remotely-hosted crate in a Git repository:
 
 ```shell
-./x.sh test --repo https://github.com/rust-lang/hashbrown
+./x.sh test --crate hashbrown --repo https://github.com/rust-lang/hashbrown
 ```
